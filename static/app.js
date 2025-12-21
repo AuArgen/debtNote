@@ -170,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchInput = document.getElementById('search-active');
         const dateFilter = document.getElementById('filter-date-active');
         const sortSelect = document.getElementById('sort-active');
+        const limitSelect = document.getElementById('limit-active');
         
         let searchTimeout = null;
         let stream = null;
@@ -363,6 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('input', () => loadActiveDebts(1));
         dateFilter.addEventListener('change', () => loadActiveDebts(1));
         sortSelect.addEventListener('change', () => loadActiveDebts(1));
+        limitSelect.addEventListener('change', () => loadActiveDebts(1));
 
         loadActiveDebts(1);
     }
@@ -371,13 +373,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchInput = document.getElementById('search-active');
         const dateFilter = document.getElementById('filter-date-active');
         const sortSelect = document.getElementById('sort-active');
+        const limitSelect = document.getElementById('limit-active');
         
         const search = searchInput ? searchInput.value : '';
         const date = dateFilter ? dateFilter.value : '';
         const sortBy = sortSelect ? sortSelect.value : '';
+        const limit = limitSelect ? limitSelect.value : 20;
 
         const container = document.getElementById('active-debts-container');
-        let url = `/api/debts?status=active&page=${page}&limit=20`;
+        let url = `/api/debts?status=active&page=${page}&limit=${limit}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (date) url += `&date=${date}`;
         if (sortBy) url += `&sort_by=${sortBy}`;
@@ -396,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <th class="py-2 px-4 border-b text-left">ФИО</th>
                         <th class="py-2 px-4 border-b text-left">Телефон</th>
                         <th class="py-2 px-4 border-b text-left">Сумма</th>
+                        <th class="py-2 px-4 border-b text-left">Дареги</th>
                         <th class="py-2 px-4 border-b text-left">Комментарий</th>
                         <th class="py-2 px-4 border-b text-left">Дата</th>
                         <th class="py-2 px-4 border-b text-left">Аракет</th>
@@ -411,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (debts && debts.length > 0) {
             debts.forEach((debt, index) => {
-                const rowNumber = (page - 1) * 20 + index + 1;
+                const rowNumber = (page - 1) * limit + index + 1;
                 tableBody.innerHTML += `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="py-2 px-4">${rowNumber}</td>
@@ -421,6 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="py-2 px-4 font-semibold">${debt.fullname}</td>
                         <td class="py-2 px-4">${debt.phone}</td>
                         <td class="py-2 px-4 font-bold text-red-600">${debt.amount} сом</td>
+                        <td class="py-2 px-4 text-sm">${debt.address || '-'}</td>
                         <td class="py-2 px-4 text-sm text-gray-600 italic">${debt.comment || '-'}</td>
                         <td class="py-2 px-4 text-sm">${new Date(debt.created_at).toLocaleDateString()}</td>
                         <td class="py-2 px-4">
@@ -429,18 +435,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     </tr>`;
             });
         } else {
-            tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4">Активдүү карыздар жок.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="9" class="text-center py-4">Активдүү карыздар жок.</td></tr>';
         }
-        createPagination('pagination-active', page, total, 20, loadActiveDebts);
+        createPagination('pagination-active', page, total, limit, loadActiveDebts);
     }
 
     // --- Clients Page Logic ---
     function initClientsPage() {
         const searchInput = document.getElementById('search-clients');
         const dateFilter = document.getElementById('filter-date-clients');
+        const limitSelect = document.getElementById('limit-clients');
         
         searchInput.addEventListener('input', () => loadClients(1));
         dateFilter.addEventListener('change', () => loadClients(1));
+        limitSelect.addEventListener('change', () => loadClients(1));
 
         loadClients(1);
     }
@@ -448,11 +456,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadClients(page) {
         const searchInput = document.getElementById('search-clients');
         const dateFilter = document.getElementById('filter-date-clients');
+        const limitSelect = document.getElementById('limit-clients');
+        
         const search = searchInput ? searchInput.value : '';
         const date = dateFilter ? dateFilter.value : '';
+        const limit = limitSelect ? limitSelect.value : 200;
 
         const container = document.getElementById('clients-container');
-        let url = `/api/clients?page=${page}&limit=200`;
+        let url = `/api/clients?page=${page}&limit=${limit}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (date) url += `&date=${date}`;
 
@@ -482,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tableBody.innerHTML = '';
         if (clients && clients.length > 0) {
             clients.forEach((client, index) => {
-                const rowNumber = (page - 1) * 200 + index + 1;
+                const rowNumber = (page - 1) * limit + index + 1;
                 const row = document.createElement('tr');
                 row.className = 'border-b hover:bg-gray-100 cursor-pointer';
                 row.innerHTML = `
@@ -508,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Клиенттер жок.</td></tr>';
         }
-        createPagination('pagination-clients', page, total, 200, loadClients);
+        createPagination('pagination-clients', page, total, limit, loadClients);
     }
 
     // --- Client Details Modal Logic ---
@@ -572,9 +583,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function initHistoryPage() {
         const searchInput = document.getElementById('search-history');
         const dateFilter = document.getElementById('filter-date-history');
+        const limitSelect = document.getElementById('limit-history');
         
         searchInput.addEventListener('input', () => loadHistory(1));
         dateFilter.addEventListener('change', () => loadHistory(1));
+        limitSelect.addEventListener('change', () => loadHistory(1));
 
         loadHistory(1);
     }
@@ -582,11 +595,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadHistory(page) {
         const searchInput = document.getElementById('search-history');
         const dateFilter = document.getElementById('filter-date-history');
+        const limitSelect = document.getElementById('limit-history');
+        
         const search = searchInput ? searchInput.value : '';
         const date = dateFilter ? dateFilter.value : '';
+        const limit = limitSelect ? limitSelect.value : 200;
 
         const container = document.getElementById('history-container');
-        let url = `/api/debts?status=paid&page=${page}&limit=200`;
+        let url = `/api/debts?status=paid&page=${page}&limit=${limit}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (date) url += `&date=${date}`;
 
@@ -629,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Тарых жок.</td></tr>';
         }
-        createPagination('pagination-history', page, total, 200, loadHistory);
+        createPagination('pagination-history', page, total, limit, loadHistory);
     }
     
     // --- Modal Logic ---

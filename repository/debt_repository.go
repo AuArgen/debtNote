@@ -12,6 +12,7 @@ type CombinedDebtInfo struct {
 	ClientID  int64      `json:"client_id"`
 	Fullname  string     `json:"fullname"`
 	Phone     string     `json:"phone"`
+	Address   string     `json:"address"` // Added Address field
 	PhotoData string     `json:"photo_data"`
 	Amount    float64    `json:"amount"`
 	Comment   string     `json:"comment"`
@@ -78,7 +79,7 @@ func GetDebts(search, date, status string, clientID int64, sortBy string, page, 
 	// 2. Get Data
 	query := `
 		SELECT
-			d.id, d.client_id, c.fullname, c.phone, c.photo_data,
+			d.id, d.client_id, c.fullname, c.phone, c.address, c.photo_data,
 			d.amount, d.comment, d.status, d.rating, d.created_at, d.paid_at
 		FROM debts d
 		JOIN clients c ON d.client_id = c.id` + whereClause + ` ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`
@@ -95,7 +96,7 @@ func GetDebts(search, date, status string, clientID int64, sortBy string, page, 
 	for rows.Next() {
 		var d CombinedDebtInfo
 		if err := rows.Scan(
-			&d.DebtID, &d.ClientID, &d.Fullname, &d.Phone, &d.PhotoData,
+			&d.DebtID, &d.ClientID, &d.Fullname, &d.Phone, &d.Address, &d.PhotoData,
 			&d.Amount, &d.Comment, &d.Status, &d.Rating, &d.CreatedAt, &d.PaidAt,
 		); err != nil {
 			return nil, 0, err
