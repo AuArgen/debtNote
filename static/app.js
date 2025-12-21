@@ -169,6 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Search and Filter Elements
         const searchInput = document.getElementById('search-active');
         const dateFilter = document.getElementById('filter-date-active');
+        const sortSelect = document.getElementById('sort-active');
         
         let searchTimeout = null;
         let stream = null;
@@ -361,6 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Search and Filter Listeners
         searchInput.addEventListener('input', () => loadActiveDebts(1));
         dateFilter.addEventListener('change', () => loadActiveDebts(1));
+        sortSelect.addEventListener('change', () => loadActiveDebts(1));
 
         loadActiveDebts(1);
     }
@@ -368,13 +370,17 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadActiveDebts(page) {
         const searchInput = document.getElementById('search-active');
         const dateFilter = document.getElementById('filter-date-active');
+        const sortSelect = document.getElementById('sort-active');
+        
         const search = searchInput ? searchInput.value : '';
         const date = dateFilter ? dateFilter.value : '';
+        const sortBy = sortSelect ? sortSelect.value : '';
 
         const container = document.getElementById('active-debts-container');
         let url = `/api/debts?status=active&page=${page}&limit=20`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (date) url += `&date=${date}`;
+        if (sortBy) url += `&sort_by=${sortBy}`;
 
         const response = await fetch(url);
         const result = await response.json();

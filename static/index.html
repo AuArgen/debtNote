@@ -87,9 +87,16 @@
         <!-- Active Debt List -->
         <div class="bg-white p-6 rounded-lg shadow-md">
             <h2 class="text-2xl font-bold mb-4">Активдүү карыздар</h2>
-            <div class="flex justify-between mb-4">
-                <input type="text" id="search-active" placeholder="Издөө (ФИО, тел, дарек, коммент)..." class="w-1/2 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+            <div class="flex flex-wrap gap-4 mb-4">
+                <input type="text" id="search-active" placeholder="Издөө (ФИО, тел, дарек, коммент)..." class="flex-grow px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                 <input type="date" id="filter-date-active" class="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                <select id="sort-active" class="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                    <option value="date_new">Жаңылар (Дата)</option>
+                    <option value="date_old">Эскилер (Дата)</option>
+                    <option value="name">ФИО (А-Я)</option>
+                    <option value="amount_desc">Көп карыз (Сумма)</option>
+                    <option value="amount_asc">Аз карыз (Сумма)</option>
+                </select>
             </div>
             <div id="active-debts-container"></div>
         </div>

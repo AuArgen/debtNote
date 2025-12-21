@@ -28,7 +28,8 @@ func GetDebtsHandler(w http.ResponseWriter, r *http.Request) {
 	searchQuery := r.URL.Query().Get("search")
 	dateQuery := r.URL.Query().Get("date")
 	status := r.URL.Query().Get("status")
-	
+	sortBy := r.URL.Query().Get("sort_by")
+
 	clientID, _ := strconv.ParseInt(r.URL.Query().Get("client_id"), 10, 64)
 
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -40,8 +41,7 @@ func GetDebtsHandler(w http.ResponseWriter, r *http.Request) {
 		limit = 20 // Default limit
 	}
 
-
-	debts, total, err := repository.GetDebts(searchQuery, dateQuery, status, clientID, page, limit)
+	debts, total, err := repository.GetDebts(searchQuery, dateQuery, status, clientID, sortBy, page, limit)
 	if err != nil {
 		http.Error(w, "Failed to fetch debts: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -73,17 +73,6 @@ func AddDebtHandler(w http.ResponseWriter, r *http.Request) {
 		PhotoData: req.PhotoData,
 	}
 
-	// Check if client exists first to determine if photo is required
-	// Note: This logic is slightly simplified. Ideally, we should check if the client exists
-	// and if not, THEN enforce the photo requirement.
-	// However, repository.FindOrCreateClient handles both.
-	// Let's modify repository.FindOrCreateClient to return an error if it's a new client and photo is missing.
-	// Or better, let's check here if we can. Since we don't know if the client exists without querying DB,
-	// we rely on the frontend validation mostly. But for backend safety:
-	
-	// We can try to find the client first.
-	// But to keep it simple and robust: Let's modify FindOrCreateClient in repository to enforce photo for NEW clients.
-	
 	clientID, err := repository.FindOrCreateClient(client)
 	if err != nil {
 		http.Error(w, "Failed to process client: "+err.Error(), http.StatusInternalServerError)

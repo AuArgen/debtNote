@@ -21,8 +21,8 @@ type CombinedDebtInfo struct {
 	PaidAt    *time.Time `json:"paid_at"`
 }
 
-// GetDebts retrieves a list of debts based on filters and pagination, returning data and total count.
-func GetDebts(search, date, status string, clientID int64, page, limit int) ([]CombinedDebtInfo, int, error) {
+// GetDebts retrieves a list of debts based on filters, sorting, and pagination.
+func GetDebts(search, date, status string, clientID int64, sortBy string, page, limit int) ([]CombinedDebtInfo, int, error) {
 	offset := (page - 1) * limit
 
 	// Base query conditions
@@ -62,14 +62,26 @@ func GetDebts(search, date, status string, clientID int64, page, limit int) ([]C
 		return nil, 0, err
 	}
 
+	// Determine Sorting
+	orderBy := "d.created_at DESC, d.id DESC" // Default: Newest first
+	switch sortBy {
+	case "date_old":
+		orderBy = "d.created_at ASC, d.id ASC"
+	case "name":
+		orderBy = "c.fullname ASC"
+	case "amount_desc":
+		orderBy = "d.amount DESC"
+	case "amount_asc":
+		orderBy = "d.amount ASC"
+	}
+
 	// 2. Get Data
-	// Added 'd.id DESC' to ORDER BY to ensure stable sorting
 	query := `
 		SELECT
 			d.id, d.client_id, c.fullname, c.phone, c.photo_data,
 			d.amount, d.comment, d.status, d.rating, d.created_at, d.paid_at
 		FROM debts d
-		JOIN clients c ON d.client_id = c.id` + whereClause + ` ORDER BY d.created_at DESC, d.id DESC LIMIT ? OFFSET ?`
+		JOIN clients c ON d.client_id = c.id` + whereClause + ` ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`
 
 	args = append(args, limit, offset)
 
@@ -90,8 +102,7 @@ func GetDebts(search, date, status string, clientID int64, page, limit int) ([]C
 		}
 		debts = append(debts, d)
 	}
-	
-	// If no debts found, return empty slice instead of nil for JSON consistency
+
 	if debts == nil {
 		debts = []CombinedDebtInfo{}
 	}
