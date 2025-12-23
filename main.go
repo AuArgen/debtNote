@@ -4,12 +4,16 @@ import (
 	"debtNote/database"
 	"debtNote/handlers"
 	"embed"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
+	"time"
 )
 
 //go:embed static/*
@@ -45,7 +49,7 @@ func main() {
 	http.HandleFunc("/api/debts/add", handlers.AddDebtHandler)
 	http.HandleFunc("/api/debts/pay", handlers.MakePaymentHandler)
 	http.HandleFunc("/api/debts/payments", handlers.GetDebtPaymentsHandler)
-	http.HandleFunc("/api/debts/delete", handlers.DeleteDebtHandler) // New handler
+	http.HandleFunc("/api/debts/delete", handlers.DeleteDebtHandler)
 
 	// Handle SPA (Single Page Application) routing
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -56,8 +60,26 @@ func main() {
 		serveIndex(w, staticFS)
 	})
 
-	log.Println("Server starting on :8080...")
-	err = http.ListenAndServe(":8080", nil)
+	// Server address
+	addr := ":8080"
+	url := "http://localhost" + addr
+
+	// Print clickable link
+	fmt.Println("---------------------------------------------------------")
+	fmt.Println(" Программа ийгиликтүү ишке кирди!")
+	fmt.Println(" Программаны ачуу үчүн төмөнкү ссылканы басыңыз:")
+	fmt.Printf(" \n %s \n\n", url)
+	fmt.Println("---------------------------------------------------------")
+
+	// Open browser automatically in a goroutine
+	go func() {
+		// Give the server a second to start
+		time.Sleep(1 * time.Second)
+		openBrowser(url)
+	}()
+
+	// Fix: Use '=' instead of ':=' because err is already declared
+	err = http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Fatal("Server failed to start:", err)
 	}
@@ -79,4 +101,24 @@ func serveIndex(w http.ResponseWriter, staticFS fs.FS) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(content)
+}
+
+// openBrowser opens the specified URL in the default browser of the user.
+func openBrowser(url string) {
+	var err error
+
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = fmt.Errorf("unsupported platform")
+	}
+
+	if err != nil {
+		log.Printf("Браузерди ачууда ката кетти: %v\nСураныч, ссылканы кол менен ачыңыз: %s", err, url)
+	}
 }
