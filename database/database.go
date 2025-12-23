@@ -13,7 +13,7 @@ var DB *sql.DB
 func InitDB() {
 	var err error
 	dbPath := "./database/debt.note.db"
-	
+
 	// Ensure the directory exists
 	if _, err := os.Stat("./database"); os.IsNotExist(err) {
 		os.Mkdir("./database", os.ModePerm)
@@ -36,6 +36,7 @@ func InitDB() {
 
 	log.Println("Database connection successful.")
 	createTables()
+	migrateTables()
 }
 
 func createTables() {
@@ -62,6 +63,8 @@ func createTables() {
 		"rating" TEXT,
 		"created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
 		"paid_at" DATETIME,
+		"deleted_at" DATETIME,
+		"delete_comment" TEXT,
 		FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
 	);`
 
@@ -69,4 +72,27 @@ func createTables() {
 		log.Fatalf("Failed to create debts table: %v", err)
 	}
 	log.Println("Debts table created or already exists.")
+
+	createDebtPaymentsTableSQL := `CREATE TABLE IF NOT EXISTS debt_payments (
+		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		"debt_id" INTEGER NOT NULL,
+		"paid_amount" REAL NOT NULL,
+		"remaining_amount" REAL NOT NULL,
+		"comment" TEXT,
+		"created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (debt_id) REFERENCES debts(id) ON DELETE CASCADE
+	);`
+
+	if _, err := DB.Exec(createDebtPaymentsTableSQL); err != nil {
+		log.Fatalf("Failed to create debt_payments table: %v", err)
+	}
+	log.Println("Debt payments table created or already exists.")
+}
+
+func migrateTables() {
+	// Try to add new columns if they don't exist.
+	// SQLite doesn't support "ADD COLUMN IF NOT EXISTS", so we just try and ignore error.
+
+	_, _ = DB.Exec(`ALTER TABLE debts ADD COLUMN deleted_at DATETIME;`)
+	_, _ = DB.Exec(`ALTER TABLE debts ADD COLUMN delete_comment TEXT;`)
 }

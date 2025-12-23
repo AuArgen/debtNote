@@ -2,13 +2,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const app = document.getElementById('app');
     const payDebtModal = document.getElementById('pay-debt-modal');
     const clientDetailsModal = document.getElementById('client-details-modal');
+    const paymentHistoryModal = document.getElementById('payment-history-modal');
+    
+    // Pay Debt Modal Elements
+    const payAmountInput = document.getElementById('pay-amount');
+    const totalDebtSpan = document.getElementById('total-debt-amount');
+    const payCommentInput = document.getElementById('pay-comment');
+    const ratingContainer = document.getElementById('rating-container');
+    const ratingSelect = document.getElementById('rating');
+    const modalClientName = document.getElementById('modal-client-name');
+
     let currentDebtToPay = null;
+    let currentDebtFullAmount = 0;
 
     // --- Router ---
     const routes = {
         '/': 'home-page',
         '/clients': 'clients-page',
-        '/history': 'history-page'
+        '/history': 'history-page',
+        '/deleted': 'deleted-page'
     };
 
     const render = (path) => {
@@ -19,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (path === '/') initHomePage();
             if (path === '/clients') initClientsPage();
             if (path === '/history') initHistoryPage();
+            if (path === '/deleted') initDeletedPage();
         } else {
             app.innerHTML = '<h2>404 - Page Not Found</h2>';
         }
@@ -38,6 +51,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const src = e.target.src;
             if (src && !src.includes('placeholder.com')) {
                 openImageInNewTab(src);
+            }
+        }
+
+        // Handle Delete Debt Button
+        if (e.target.classList.contains('delete-debt-btn')) {
+            const debtId = e.target.dataset.debtId;
+            const comment = prompt('Бул карызды өчүрүү себебин жазыңыз:');
+            if (comment !== null) {
+                if (comment.trim() === "") {
+                    alert("Себебин жазуу милдеттүү!");
+                } else {
+                    deleteDebt(debtId, comment);
+                }
             }
         }
     });
@@ -252,9 +278,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (client.photo_data) {
                 photoElement.src = client.photo_data;
                 photoDataElement.value = client.photo_data;
+                
+                // Show photo, hide webcam
                 photoElement.classList.remove('hidden');
                 photoElement.classList.add('zoomable-image', 'cursor-pointer');
+                webcamElement.classList.add('hidden');
+                canvasElement.classList.add('hidden');
+
+                // Adjust buttons
+                startCameraButton.classList.add('hidden');
+                capturePhotoButton.classList.add('hidden');
+                recapturePhotoButton.classList.remove('hidden');
+
+                // Stop stream if active
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
             }
+
             clientSuggestions.classList.add('hidden');
             phoneInput.readOnly = true;
             addressInput.readOnly = true;
@@ -266,10 +308,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 addDebtForm.reset();
                 phoneInput.readOnly = false;
                 addressInput.readOnly = false;
+                
+                // Reset photo/webcam UI
                 photoElement.src = '';
                 photoElement.classList.add('hidden');
                 photoElement.classList.remove('zoomable-image', 'cursor-pointer');
                 photoDataElement.value = '';
+                
+                webcamElement.classList.remove('hidden');
+                startCameraButton.classList.remove('hidden');
+                capturePhotoButton.classList.add('hidden');
+                recapturePhotoButton.classList.add('hidden');
+
                 isExistingClient = false;
             }
         });
@@ -286,8 +336,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     webcamElement.srcObject = stream;
                     webcamElement.classList.remove('hidden');
+                    photoElement.classList.add('hidden');
                     startCameraButton.classList.add('hidden');
                     capturePhotoButton.classList.remove('hidden');
+                    recapturePhotoButton.classList.add('hidden');
                 } catch (error) {
                     console.error("Camera error", error);
                     alert("Камераны иштетүүдө ката кетти.");
@@ -303,12 +355,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             photoElement.src = photoDataUrl;
             photoDataElement.value = photoDataUrl;
+            
             webcamElement.classList.add('hidden');
             photoElement.classList.remove('hidden');
             photoElement.classList.add('zoomable-image', 'cursor-pointer');
+            
             capturePhotoButton.classList.add('hidden');
             recapturePhotoButton.classList.remove('hidden');
-            if (stream) stream.getTracks().forEach(track => track.stop());
+            
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
         });
 
         recapturePhotoButton.addEventListener('click', () => {
@@ -343,17 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (response.ok) {
                 alert('Карыз ийгиликтүү кошулду!');
-                addDebtForm.reset();
-                phoneInput.readOnly = false;
-                addressInput.readOnly = false;
-                photoElement.src = '';
-                photoElement.classList.add('hidden');
-                recapturePhotoButton.classList.add('hidden');
-                startCameraButton.classList.remove('hidden');
-                if (stream) stream.getTracks().forEach(track => track.stop());
-                webcamElement.classList.add('hidden');
-                isExistingClient = false;
-                loadActiveDebts(1);
+                window.location.reload();
             } else {
                 const error = await response.json();
                 alert(`Ката: ${error.message || 'Белгисиз ката.'}`);
@@ -429,8 +477,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="py-2 px-4 text-sm">${debt.address || '-'}</td>
                         <td class="py-2 px-4 text-sm text-gray-600 italic">${debt.comment || '-'}</td>
                         <td class="py-2 px-4 text-sm">${new Date(debt.created_at).toLocaleDateString()}</td>
-                        <td class="py-2 px-4">
-                            <button data-debt-id="${debt.debt_id}" data-client-name="${debt.fullname}" class="pay-debt-btn px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">Жабуу</button>
+                        <td class="py-2 px-4 flex space-x-2">
+                            <button data-debt-id="${debt.debt_id}" data-client-name="${debt.fullname}" data-amount="${debt.amount}" class="pay-debt-btn px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">Жабуу</button>
+                            <button onclick="openPaymentHistory(${debt.debt_id})" class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">Тарых</button>
+                            <button data-debt-id="${debt.debt_id}" class="delete-debt-btn px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600">Өчүрүү</button>
                         </td>
                     </tr>`;
             });
@@ -438,6 +488,27 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.innerHTML = '<tr><td colspan="9" class="text-center py-4">Активдүү карыздар жок.</td></tr>';
         }
         createPagination('pagination-active', page, total, limit, loadActiveDebts);
+    }
+
+    async function deleteDebt(debtId, comment) {
+        try {
+            const response = await fetch('/api/debts/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ debt_id: parseInt(debtId), comment: comment }),
+            });
+
+            if (response.ok) {
+                alert('Карыз ийгиликтүү өчүрүлдү (Корзинага жылдырылды).');
+                loadActiveDebts(1);
+            } else {
+                const error = await response.json();
+                alert(`Ката: ${error.message || 'Өчүрүүдө ката кетти.'}`);
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Өчүрүүдө ката кетти.');
+        }
     }
 
     // --- Clients Page Logic ---
@@ -567,12 +638,58 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="py-2 px-4">${new Date(debt.created_at).toLocaleDateString()}</td>
                     <td class="py-2 px-4 text-sm">${debt.comment || '-'}</td>
                     ${!isActive ? `<td class="py-2 px-4">${new Date(debt.paid_at).toLocaleDateString()}</td><td class="py-2 px-4">${getRatingBadge(debt.rating)}</td>` : ''}
-                    ${isActive ? `<td class="py-2 px-4"><button data-debt-id="${debt.debt_id}" data-client-name="${debt.fullname}" class="pay-debt-btn px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">Жабуу</button></td>` : ''}
+                    ${isActive ? `<td class="py-2 px-4 flex space-x-2">
+                        <button data-debt-id="${debt.debt_id}" data-client-name="${debt.fullname}" data-amount="${debt.amount}" class="pay-debt-btn px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">Жабуу</button>
+                        <button onclick="openPaymentHistory(${debt.debt_id})" class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">Тарых</button>
+                    </td>` : ''}
                 </tr>`;
         });
         html += '</tbody></table>';
         container.innerHTML = html;
     }
+
+    // Expose function to global scope for onclick handler
+    window.openPaymentHistory = async function(debtID) {
+        const response = await fetch(`/api/debts/payments?debt_id=${debtID}`);
+        const payments = await response.json();
+        
+        const container = document.getElementById('payment-history-content');
+        if (!payments || payments.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 italic">Төлөм тарыхы жок.</p>';
+        } else {
+            let html = `
+                <table class="min-w-full bg-white border">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-2 px-4 text-left">Дата</th>
+                            <th class="py-2 px-4 text-left">Төлөндү</th>
+                            <th class="py-2 px-4 text-left">Калды</th>
+                            <th class="py-2 px-4 text-left">Коммент</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            
+            payments.forEach(p => {
+                html += `
+                    <tr class="border-b">
+                        <td class="py-2 px-4">${new Date(p.created_at).toLocaleDateString()} ${new Date(p.created_at).toLocaleTimeString()}</td>
+                        <td class="py-2 px-4 font-bold text-green-600">${p.paid_amount} сом</td>
+                        <td class="py-2 px-4 text-red-600">${p.remaining_amount} сом</td>
+                        <td class="py-2 px-4 text-sm italic">${p.comment || '-'}</td>
+                    </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        paymentHistoryModal.classList.remove('hidden');
+        paymentHistoryModal.classList.add('flex');
+    };
+
+    document.getElementById('close-history-modal').addEventListener('click', () => {
+        paymentHistoryModal.classList.add('hidden');
+        paymentHistoryModal.classList.remove('flex');
+    });
 
     document.getElementById('close-details-modal').addEventListener('click', () => {
         clientDetailsModal.classList.add('hidden');
@@ -647,13 +764,98 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         createPagination('pagination-history', page, total, limit, loadHistory);
     }
+
+    // --- Deleted Page Logic ---
+    function initDeletedPage() {
+        const searchInput = document.getElementById('search-deleted');
+        const dateFilter = document.getElementById('filter-date-deleted');
+        const limitSelect = document.getElementById('limit-deleted');
+        
+        searchInput.addEventListener('input', () => loadDeletedDebts(1));
+        dateFilter.addEventListener('change', () => loadDeletedDebts(1));
+        limitSelect.addEventListener('change', () => loadDeletedDebts(1));
+
+        loadDeletedDebts(1);
+    }
+
+    async function loadDeletedDebts(page) {
+        const searchInput = document.getElementById('search-deleted');
+        const dateFilter = document.getElementById('filter-date-deleted');
+        const limitSelect = document.getElementById('limit-deleted');
+        
+        const search = searchInput ? searchInput.value : '';
+        const date = dateFilter ? dateFilter.value : '';
+        const limit = limitSelect ? limitSelect.value : 200;
+
+        const container = document.getElementById('deleted-container');
+        let url = `/api/debts?status=deleted&page=${page}&limit=${limit}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (date) url += `&date=${date}`;
+
+        const response = await fetch(url);
+        const result = await response.json();
+        const debts = result.data;
+        const total = result.total;
+
+        let content = `
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="py-2 px-4">Аты-жөнү</th>
+                        <th class="py-2 px-4">Сумма</th>
+                        <th class="py-2 px-4">Алынган күнү</th>
+                        <th class="py-2 px-4">Өчүрүлгөн күнү</th>
+                        <th class="py-2 px-4">Себеби</th>
+                    </tr>
+                </thead>
+                <tbody id="deleted-table-body"></tbody>
+            </table>
+            <div id="pagination-deleted"></div>`;
+        container.innerHTML = content;
+
+        const tableBody = document.getElementById('deleted-table-body');
+        tableBody.innerHTML = '';
+        if (debts && debts.length > 0) {
+            debts.forEach(debt => {
+                tableBody.innerHTML += `
+                    <tr class="border-b">
+                        <td class="py-2 px-4">${debt.fullname}</td>
+                        <td class="py-2 px-4">${debt.amount} сом</td>
+                        <td class="py-2 px-4">${new Date(debt.created_at).toLocaleDateString()}</td>
+                        <td class="py-2 px-4 text-red-600">${debt.deleted_at ? new Date(debt.deleted_at).toLocaleDateString() : '-'}</td>
+                        <td class="py-2 px-4 text-sm text-gray-600 italic">${debt.delete_comment || '-'}</td>
+                    </tr>`;
+            });
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Корзина бош.</td></tr>';
+        }
+        createPagination('pagination-deleted', page, total, limit, loadDeletedDebts);
+    }
     
     // --- Modal Logic ---
     document.body.addEventListener('click', (event) => {
         if (event.target.classList.contains('pay-debt-btn')) {
             currentDebtToPay = event.target.dataset.debtId;
-            document.getElementById('modal-client-name').textContent = event.target.dataset.clientName;
+            currentDebtFullAmount = parseFloat(event.target.dataset.amount);
+            
+            modalClientName.textContent = event.target.dataset.clientName;
+            payAmountInput.value = currentDebtFullAmount;
+            totalDebtSpan.textContent = currentDebtFullAmount;
+            payCommentInput.value = '';
+            
+            // Show rating by default since full amount is pre-filled
+            ratingContainer.classList.remove('hidden');
+            
             payDebtModal.style.display = 'flex';
+        }
+    });
+
+    payAmountInput.addEventListener('input', () => {
+        const amount = parseFloat(payAmountInput.value);
+        if (amount >= currentDebtFullAmount) {
+            ratingContainer.classList.remove('hidden');
+        } else {
+            ratingContainer.classList.add('hidden');
         }
     });
 
@@ -664,18 +866,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('confirm-pay').addEventListener('click', async () => {
         if (!currentDebtToPay) return;
-        const rating = document.getElementById('rating').value;
+        
+        const paidAmount = parseFloat(payAmountInput.value);
+        const comment = payCommentInput.value;
+        const rating = ratingSelect.value;
+
+        if (isNaN(paidAmount) || paidAmount <= 0) {
+            alert('Сумманы туура жазыңыз');
+            return;
+        }
+        if (!comment) {
+            alert('Комментарий жазуу милдеттүү');
+            return;
+        }
+
         const response = await fetch('/api/debts/pay', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ debt_id: parseInt(currentDebtToPay), rating: rating }),
+            body: JSON.stringify({ 
+                debt_id: parseInt(currentDebtToPay), 
+                paid_amount: paidAmount,
+                comment: comment,
+                rating: rating 
+            }),
         });
+
         if (response.ok) {
-            alert('Карыз ийгиликтүү жабылды!');
+            alert('Төлөм ийгиликтүү кабыл алынды!');
             payDebtModal.style.display = 'none';
+            
             // Refresh current view
             const currentPath = window.location.pathname;
             if (currentPath === '/') loadActiveDebts(1);
+            
             // If inside client details modal, refresh that too
             if (!clientDetailsModal.classList.contains('hidden')) {
                 clientDetailsModal.classList.add('hidden'); 
@@ -683,7 +906,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentPath === '/clients') loadClients(1);
             }
         } else {
-            alert('Карызды жабууда ката кетти.');
+            const error = await response.json();
+            alert(`Ката: ${error.message || 'Белгисиз ката.'}`);
         }
         currentDebtToPay = null;
     });

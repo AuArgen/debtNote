@@ -19,6 +19,7 @@
                     <a href="/" class="text-gray-600 hover:text-blue-500">Башкы бет</a>
                     <a href="/clients" class="text-gray-600 hover:text-blue-500">Клиенттер</a>
                     <a href="/history" class="text-gray-600 hover:text-blue-500">Тарых</a>
+                    <a href="/deleted" class="text-red-600 hover:text-red-800">Корзина</a>
                 </div>
             </div>
         </div>
@@ -37,20 +38,20 @@
                 <!-- Client Info -->
                 <div class="relative">
                     <label for="fullname" class="block text-sm font-medium text-gray-700">Аты-жөнү*</label>
-                    <input type="text" id="fullname" name="fullname" required autocomplete="off" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    <input type="text" id="fullname" name="fullname" required autocomplete="off-random-string" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     <div id="client-suggestions" class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 hidden max-h-60 overflow-y-auto"></div>
                 </div>
                 <div>
                     <label for="phone" class="block text-sm font-medium text-gray-700">Телефон номери*</label>
-                    <input type="tel" id="phone" name="phone" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                    <input type="tel" id="phone" name="phone" required autocomplete="off-random-string" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                 </div>
                 <div>
                     <label for="address" class="block text-sm font-medium text-gray-700">Дареги</label>
-                    <input type="text" id="address" name="address" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                    <input type="text" id="address" name="address" autocomplete="off-random-string" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                 </div>
                 <div>
                     <label for="amount" class="block text-sm font-medium text-gray-700">Карыз суммасы*</label>
-                    <input type="number" id="amount" name="amount" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                    <input type="number" id="amount" name="amount" required autocomplete="off-random-string" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                 </div>
 
                 <!-- Photo Section (Left side) -->
@@ -148,6 +149,25 @@
         </div>
     </template>
 
+    <template id="deleted-page">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold mb-4 text-red-600">Өчүрүлгөн карыздар (Корзина)</h2>
+            <div class="flex justify-between mb-4 gap-4">
+                <input type="text" id="search-deleted" placeholder="Издөө (ФИО, тел, дарек, коммент)..." class="flex-grow px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                <input type="date" id="filter-date-deleted" class="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                <select id="limit-deleted" class="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" title="Көрсөтүү лимити">
+                    <option value="10">10</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="200" selected>200</option>
+                    <option value="500">500</option>
+                    <option value="1000">1000</option>
+                </select>
+            </div>
+            <div id="deleted-container"></div>
+        </div>
+    </template>
+
     <!-- Client Details Modal -->
     <div id="client-details-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
         <div class="bg-white p-6 rounded-lg shadow-xl w-3/4 max-h-screen overflow-y-auto my-8">
@@ -177,17 +197,43 @@
         <div class="bg-white p-6 rounded-lg shadow-xl w-1/3">
             <h3 class="text-xl font-bold mb-4">Карызды жабуу</h3>
             <p class="mb-4">Кардар <strong id="modal-client-name"></strong> карызын төлөдүбү?</p>
+
             <div class="mb-4">
-                <label for="rating" class="block text-sm font-medium text-gray-700">Баа берүү</label>
+                <label for="pay-amount" class="block text-sm font-medium text-gray-700">Төлөнүүчү сумма</label>
+                <input type="number" id="pay-amount" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                <p class="text-xs text-gray-500 mt-1">Жалпы карыз: <span id="total-debt-amount" class="font-bold"></span> сом</p>
+            </div>
+
+            <div class="mb-4">
+                <label for="pay-comment" class="block text-sm font-medium text-gray-700">Комментарий*</label>
+                <textarea id="pay-comment" rows="2" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required></textarea>
+            </div>
+
+            <div class="mb-4 hidden" id="rating-container">
+                <label for="rating" class="block text-sm font-medium text-gray-700">Баа берүү (Толук жабылганда)</label>
                 <select id="rating" name="rating" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                     <option value="good">Жакшы (убагында төлөдү)</option>
                     <option value="bad">Начар (кечиктирип төлөдү)</option>
                     <option value="untrusted">Ишенич жок (көйгөй жаратты)</option>
                 </select>
             </div>
+
             <div class="flex justify-end space-x-2">
                 <button id="cancel-pay" type="button" class="px-4 py-2 bg-gray-300 rounded-md">Жок</button>
-                <button id="confirm-pay" type="button" class="px-4 py-2 bg-green-600 text-white rounded-md">Ооба, жабуу</button>
+                <button id="confirm-pay" type="button" class="px-4 py-2 bg-green-600 text-white rounded-md">Төлөө</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History Modal (z-index 70 to be above client details) -->
+    <div id="payment-history-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-[70]">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-1/2 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Төлөм тарыхы</h3>
+                <button id="close-history-modal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div id="payment-history-content">
+                <!-- History table will be injected here -->
             </div>
         </div>
     </div>
